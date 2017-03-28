@@ -6,6 +6,7 @@ use pocketmine\level\Position;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\{CompoundTag, IntTag, ListTag, StringTag};
 use pocketmine\tile\Tile;
+use pocketmine\item\Item;
 
 class BaseStructure implements Type{
 
@@ -17,11 +18,16 @@ class BaseStructure implements Type{
         $this->position = $position;
     }
 
-    public function fill(Vector3 $pos1, Vector3 $pos2, int $blockId, int $blockData = 0)
+    public function fill(Vector3 $pos1, Vector3 $pos2, $blockId, int $blockData = 0)
     {
         $xa = [$pos1->x, $pos2->x];
         $ya = [$pos1->y, $pos2->y];
         $za = [$pos1->z, $pos2->z];
+        if (!is_numeric($blockId)) {
+            $block = $blockId;
+            $blockId = $block->getId();
+            $blockData = $block->getDamage();
+        }
         for ($x = min($xa); $x <= max($xa); ++$x) {
             for ($y = min($ya); $y <= max($ya); ++$y) {
                 for ($z = min($za); $z <= max($za); ++$z) {
@@ -66,6 +72,27 @@ class BaseStructure implements Type{
         $this->containerType = $type;
     }
 
+    public function setTile(Vector3 $pos, int $blockId, int $data = 0, $data2 = 0)
+    {
+        $pos = $this->position->add($pos);
+        $pos->getLevel()->setBlockIdAt($pos->x, $pos->y, $pos->z, $blockId);
+        switch ($blockId) {
+            case Block::FLOWER_POT_BLOCK:
+                $nbt = new CompoundTag('', [
+                    new ListTag('Items', []),
+                    new StringTag('id', Tile::FLOWER_POT),
+                    new IntTag('x', $pos->x),
+                    new IntTag('y', $pos->y),
+                    new IntTag('z', $pos->z)
+                ]);
+                /** @var Chest $tile */
+                $tile = Tile::createTile(Tile::FLOWER_POT, $pos->getLevel(), $nbt);
+                $tile->setItem(Item::get($data, $data2));
+                $tile->spawnToAll();
+                break;
+        }
+    }
+
     public function createRandomItemsContainer(Vector3 $pos, int $face = 0)
     {
         if ($this->getContainerType() === -1) {
@@ -73,7 +100,6 @@ class BaseStructure implements Type{
             return;
         }
         $pos = $this->position->add($pos);
-        var_dump($pos);
         $nbt = new CompoundTag('', [
             new ListTag('Items', []),
             new StringTag('id', Tile::CHEST),
